@@ -10,23 +10,24 @@ function param() {
     height=1080
     temp_folder=/data/tmp
     screen_set_tmp=temp_folder+"/screen_set.txt"
-    if [ "$name" == "width" ]; then
+    if [ "$name" = "width" ]; then
       echo $width
-    elif [ "$name" == "height" ]; then
+    elif [ "$name" = "height" ]; then
       echo $height
-    elif [ "$name" == "temp_folder" ]; then
+    elif [ "$name" = "temp_folder" ]; then
       echo $temp_folder
-    elif [ "$name" == "screen_set_tmp" ]; then
+    elif [ "$name" = "screen_set_tmp" ]; then
       echo $screen_set_tmp
     fi
 }
 
 function brightness() {
   mode=$1
-  if [ "$mode" == "set" ]; then
+
+  if [ "$mode" = "set" ]; then
       echo 0 > /sys/class/leds/lcd-backlight/brightness &&
         echo 0 > /sys/class/leds/lcd-backlight/max_brightness
-  elif [ "$mode" == "reset" ]; then
+  elif [ "$mode" = "reset" ]; then
       echo 255 > /sys/class/leds/lcd-backlight/max_brightness &&
         echo 1 > /sys/class/leds/lcd-backlight/brightness
   fi
@@ -44,24 +45,24 @@ function screen() {
   mode=$1
   password=$2
   is_set=$(can_set)
-  if [ "$mode" == "unlock" ]; then
+  if [ "$mode" = "unlock" ]; then
      input keyevent 26 &&
       input keyevent 82 &&
       input swipe "$width"/2 "$width"/2 0 0 &&
       input text "$password" &&
       input keyevent 66
      sleep $command_delay
-  elif [ "$mode" == "lock" ]; then
+  elif [ "$mode" = "lock" ]; then
      input keyevent 26 &&
      sleep $command_delay
-  elif [ "$mode" == "set" ]; then
-    if [ "$is_set" != 1 ]; then
+  elif [ "$mode" = "set" ]; then
+    if [ "$is_set" -eq 1 ]; then
         cat<'screen setup can not be done'
         return 1
     fi
     echo 1 > $screen_set_tmp
     sleep $command_delay
-  elif [ "$mode" == "reset" ]; then
+  elif [ "$mode" = "reset" ]; then
     echo 0 > $screen_set_tmp
     wm size reset && wm density reset && brightness reset
     sleep $command_delay
@@ -88,20 +89,18 @@ function get_battery_level() {
     echo "$battery_level"
 }
 
-if [ $# == 0 ]; then
+if [ $# = 0 ]; then
     echo 'please specify action: start|stop'
     return 1
 fi
-loop_limit=
-if [ $# -le 1 ]; then
-  loop_limit=-1
-else
+loop_limit=-1
+if [ $# -gt 1 ]; then
   loop_limit=$2
 fi
 
 mode=$1
 
-if [ "$mode" == "start" ]; then
+if [ "$mode" = "start" ]; then
     brightness set &&
       screen reset &&
       screen unlock &&
