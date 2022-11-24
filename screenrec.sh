@@ -1,40 +1,26 @@
-
 intent_name=com.al3xkras.camera
 battery_level_min=5
 screencap_delay=2
 command_delay=1
-
-function param() {
-    name=$1
-    width=1920
-    height=1080
-    temp_folder=/data/tmp
-    screen_set_tmp=temp_folder+"/screen_set.txt"
-    if [ "$name" = "width" ]; then
-      echo $width
-    elif [ "$name" = "height" ]; then
-      echo $height
-    elif [ "$name" = "temp_folder" ]; then
-      echo $temp_folder
-    elif [ "$name" = "screen_set_tmp" ]; then
-      echo $screen_set_tmp
-    fi
-}
+width=1920
+height=1080
+temp_folder=/data/tmp
+screen_set_tmp=./screen_set.txt
 
 function brightness() {
   mode=$1
-
   if [ "$mode" = "set" ]; then
-      echo 0 > /sys/class/leds/lcd-backlight/brightness &&
-        echo 0 > /sys/class/leds/lcd-backlight/max_brightness
+      su -c echo 0 > /sys/class/leds/lcd-backlight/brightness &&
+        su -c echo 0 > /sys/class/leds/lcd-backlight/max_brightness
   elif [ "$mode" = "reset" ]; then
-      echo 255 > /sys/class/leds/lcd-backlight/max_brightness &&
-        echo 1 > /sys/class/leds/lcd-backlight/brightness
+      su -c echo 255 > /sys/class/leds/lcd-backlight/max_brightness &&
+        su -c echo 1 > /sys/class/leds/lcd-backlight/brightness
   fi
 }
 
 function can_set() {
-    is_set=$(cat "$(param screen_set_tmp)") == 1
+    is_set=$(cat ./screen_set.txt) == 1
+    echo is set "$is_set"
     if [ "$is_set" ]; then
         echo 1
     fi
@@ -46,9 +32,9 @@ function screen() {
   password=$2
   is_set=$(can_set)
   if [ "$mode" = "unlock" ]; then
-     input keyevent 26 &&
+     input keyevent KEYCODE_WAKEUP &&
       input keyevent 82 &&
-      input swipe "$width"/2 "$width"/2 0 0 &&
+      input swipe 600 600 0 0 &&
       input text "$password" &&
       input keyevent 66
      sleep $command_delay
@@ -64,13 +50,13 @@ function screen() {
     sleep $command_delay
   elif [ "$mode" = "reset" ]; then
     echo 0 > $screen_set_tmp
-    wm size reset && wm density reset && brightness reset
+    wm size reset && wm density reset
     sleep $command_delay
   fi
 }
 
 function start_intent() {
-   am start $intent_name &&
+   am start -a android.media.action.STILL_IMAGE_CAMERA  &&
    sleep $command_delay
 }
 
@@ -85,7 +71,7 @@ function capture_frame() {
 }
 
 function get_battery_level() {
-    battery_level=$(dumpsys battery | grep level | sed 's@^[^0-9]*\([0-9]\+\).*@\1@')
+    battery_level=$(dumpsys battery | grep level | grep -o -E '[0-9]+' | head -1 | sed -e 's/^0\+//')
     echo "$battery_level"
 }
 
@@ -101,11 +87,9 @@ fi
 mode=$1
 
 if [ "$mode" = "start" ]; then
-    brightness set &&
-      screen reset &&
-      screen unlock &&
-      screen set
-    battery_level=get_battery_level
+    brightness set && screen reset && screen unlock ppp333cc1 && screen set
+    battery_level=$(get_battery_level)
+    echo battery level:"$battery_level"
 
     initial_delay=5
     post_init_delay=3
@@ -115,17 +99,24 @@ if [ "$mode" = "start" ]; then
 
     loop_number=0
     while [ "$battery_level" -gt "$battery_level_min" ] && [ "$loop_limit" -lt 0 ] || [ "$loop_number" -lt "$loop_limit" ]; do
-        loop_number=$loop_number+1;
-        battery_level=get_battery_level
+        loop_number=$((loop_number+1));
+        battery_level=$(get_battery_level)
         capture_frame
+        echo battery level $battery_level
+        echo 'loop div '$((loop_number%5))
+        if [ "$((loop_number%5))" -eq 0 ]; then
+          start_intent
+        fi
         sleep $screencap_delay
     done
     sleep $post_init_delay
     screen reset &&
           screen lock &&
           brightness reset
-elif [ "$mode" == "stop" ]; then
+    return 0
+elif [ "$mode" = "stop" ]; then
     screen reset &&
       screen lock &&
       brightness reset
+    return 0
 fi
