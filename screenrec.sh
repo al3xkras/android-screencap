@@ -1,4 +1,4 @@
-intent_name=com.al3xkras.camera
+intent_name=com.tomerpacific.camera2api
 battery_level_min=5
 screencap_delay=2
 command_delay=1
@@ -56,7 +56,7 @@ function screen() {
 }
 
 function start_intent() {
-   am start -a android.media.action.STILL_IMAGE_CAMERA  &&
+   am start -n com.tomerpacific.camera2api/.MainActivity &&
    sleep $command_delay
 }
 
@@ -87,7 +87,7 @@ fi
 mode=$1
 
 if [ "$mode" = "start" ]; then
-    brightness set && screen reset && screen unlock ppp333cc1 && screen set
+    screen reset && screen unlock ppp333cc1 && screen set
     battery_level=$(get_battery_level)
     echo battery level:"$battery_level"
 

@@ -20,6 +20,7 @@ import android.provider.Settings
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
+import android.view.KeyEvent
 import android.view.Surface
 import android.view.TextureView
 import android.widget.Button
@@ -37,8 +38,7 @@ const val CAMERA_REQUEST_RESULT = 1
 
 class MainActivity : AppCompatActivity() {
 
-    private var imageStorage: ImageStorage = ImageStorage()
-
+    private var imageStorage: ImageStorage = ImageStorage(this)
 
     private lateinit var textureView: TextureView
     private lateinit var cameraId: String
@@ -94,6 +94,13 @@ class MainActivity : AppCompatActivity() {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), CAMERA_REQUEST_RESULT)
         }
         startBackgroundThread()
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        if (event != null && event.keyCode == KeyEvent.KEYCODE_CAMERA) {
+            takePhoto()
+        }
+        return true
     }
 
     @SuppressLint("MissingPermission")
@@ -349,13 +356,10 @@ class MainActivity : AppCompatActivity() {
     /**
      * ImageAvailable Listener
      */
-    val onImageAvailableListener = object: ImageReader.OnImageAvailableListener{
-        override fun onImageAvailable(reader: ImageReader) {
-            Toast.makeText(this@MainActivity, "Photo Taken!", Toast.LENGTH_SHORT).show()
-            val image: Image = reader.acquireLatestImage()
-            imageStorage.saveNext(image)
-            image.close()
-        }
+    val onImageAvailableListener = ImageReader.OnImageAvailableListener { reader ->
+        val image: Image = reader.acquireLatestImage()
+        imageStorage.saveNext(image)
+        image.close()
     }
 
     /**
